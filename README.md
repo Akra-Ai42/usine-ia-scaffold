@@ -44,6 +44,68 @@ POST /api/recommendations/{id}/review  ← validation humaine obligatoire
 
 ---
 
+## Schéma de données
+
+```mermaid
+erDiagram
+    incidents {
+        uuid id PK
+        text status
+        text severity
+        text title
+        text[] mitre_techniques
+        timestamptz created_at
+        timestamptz updated_at
+    }
+    alerts {
+        uuid id PK
+        text external_id
+        text severity
+        text source
+        text title
+        jsonb raw_payload
+        uuid incident_id FK
+        timestamptz received_at
+    }
+    agent_runs {
+        uuid id PK
+        uuid incident_id FK
+        text run_type
+        text llm_model
+        int latency_ms
+        text status
+        timestamptz started_at
+        timestamptz finished_at
+    }
+    recommendations {
+        uuid id PK
+        uuid incident_id FK
+        uuid agent_run_id FK
+        text content
+        float confidence
+        text[] mitre_refs
+        text status
+        timestamptz created_at
+        text reviewed_by
+    }
+    audit_log {
+        uuid id PK
+        text entity_type
+        uuid entity_id
+        text action
+        text actor
+        text reason
+        timestamptz created_at
+    }
+
+    incidents ||--o{ alerts : "regroupe"
+    incidents ||--o{ agent_runs : "déclenche"
+    incidents ||--o{ recommendations : "produit"
+    agent_runs ||--o{ recommendations : "génère"
+```
+
+---
+
 ## Installation locale
 
 ### Prérequis
@@ -135,6 +197,20 @@ curl -X POST http://localhost:8000/api/recommendations/<reco_id>/review \
 ```
 
 Toute recommandation doit être validée ou rejetée par un humain avant action. C'est une exigence **non négociable** (AI Act article 14 — supervision humaine).
+
+---
+
+## Endpoints API
+
+| Méthode | Route | Description |
+|---------|-------|-------------|
+| `GET` | `/health` | Statut de l'API et du retriever |
+| `POST` | `/api/alerts` | Ingère une alerte SIEM → crée un incident + lance l'agent (202) |
+| `GET` | `/api/incidents` | Liste tous les incidents (`?limit=50&offset=0`) |
+| `GET` | `/api/incidents/{id}` | Détail d'un incident + ses recommandations |
+| `POST` | `/api/recommendations/{id}/review` | Valide ou rejette une recommandation (guardrail AI Act art.14) |
+
+Documentation interactive complète : http://localhost:8000/docs
 
 ---
 
