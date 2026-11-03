@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Env
+.env
+.env.local
+
+# Data
+data/*.db
+data/*.csv
+data/raw/
+models/
+
+# Docs privés (approche B)
+docs/incidents-playbook.md
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
