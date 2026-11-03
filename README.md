@@ -112,47 +112,69 @@ erDiagram
 
 ### Prérequis
 
-- Python 3.11
 - Docker & Docker Compose
-- Clé API OpenRouter (fournies par le formateur)
-
-### Démarrage
+- Python 3.11 (mode développeur uniquement)
+- Clé API OpenRouter (fournie par le formateur)
 
 ```bash
-# 1. Cloner le repo
-git clone <url-repo> vigie-prod
-cd vigie-prod
-
-# 2. Variables d'environnement
+# Étape commune : variables d'environnement
 cp .env.example .env
 # Éditer .env : renseigner OPENROUTER_API_KEY et SESSION_SECRET_KEY
+```
 
-# 3. Lancer les services (DB, Redis, Qdrant, Langfuse)
+---
+
+### Mode A — Tout Docker *(recommandé, zéro installation Python)*
+
+```bash
+# Lancer tous les services + API + UI
+docker compose up --build
+
+# Première fois — appliquer les migrations et charger MITRE
+make up
+```
+
+| Service  | URL                        |
+|----------|----------------------------|
+| API      | http://localhost:8000      |
+| Docs API | http://localhost:8000/docs |
+| UI       | http://localhost:8501      |
+| Langfuse | http://localhost:3000      |
+
+---
+
+### Mode B — Infra Docker, API en local *(développeur Windows/Mac)*
+
+Les services DB, Redis, Qdrant et Langfuse tournent dans Docker et exposent leurs ports sur `localhost`. L'API et l'UI tournent directement sur la machine hôte.
+
+```bash
+# 1. Démarrer uniquement l'infrastructure
 docker compose up -d db redis qdrant langfuse
 
-# 4. Appliquer le schéma DB
-docker compose --profile init up migrate
-# ou en local : python -m app.adapters.db.migrate
-
-# 5. Charger les techniques MITRE ATT&CK dans Qdrant
+# 2. Migrations + seed MITRE (première fois)
+docker compose --profile init run --rm migrate
 python scripts/seed_mitre.py
 
-# 6. Installer les dépendances Python
+# 3. Installer les dépendances Python
 pip install uv
 uv pip install -e ".[dev]"
 
-# 7. Lancer l'API
+# 4. Lancer l'API (avec hot-reload)
 uvicorn app.main:app --reload --port 8000
 
-# 8. Lancer l'UI (autre terminal)
+# 5. Lancer l'UI (autre terminal)
 streamlit run streamlit_app.py
 ```
 
-### Tout en Docker
+Ports exposés par Docker sur `localhost` :
 
-```bash
-docker compose up --build
-```
+| Service  | Port  |
+|----------|-------|
+| PostgreSQL | 5432 |
+| Redis      | 6379 |
+| Qdrant REST | 6333 |
+| Qdrant gRPC | 6334 |
+| Langfuse   | 3000 |
 
 | Service  | URL                        |
 |----------|----------------------------|
