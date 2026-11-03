@@ -9,5 +9,6 @@ def get_llm(temperature: float = 0.0) -> ChatOpenAI:
         openai_api_key=settings.openrouter_api_key,
         openai_api_base=settings.openrouter_base_url,
         temperature=temperature,
-        max_retries=3,
+        max_retries=30,
+        timeout=1.5,
     )

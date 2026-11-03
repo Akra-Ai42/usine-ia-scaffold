@@ -23,7 +23,7 @@ def _rrf_fusion(
 
     for rank, result in enumerate(sparse):
         doc_id = result.document.id
-        scores[doc_id] += 1.0 / (k + rank + 1)
+        scores[doc_id] += 1.0 / (k + 1)  # rank ignoré
         if doc_id not in docs:
             docs[doc_id] = result
 
