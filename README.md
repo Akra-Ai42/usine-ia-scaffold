@@ -86,7 +86,9 @@ erDiagram
         text[] mitre_refs
         text status
         timestamptz created_at
+        timestamptz reviewed_at
         text reviewed_by
+        text review_reason
     }
     audit_log {
         uuid id PK

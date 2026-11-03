@@ -41,7 +41,7 @@ def _make_reco(**kwargs) -> Recommendation:
         id=RECO_ID, incident_id=INC_ID, agent_run_id=RUN_ID,
         content="Bloquer l'IP 10.0.0.42", confidence=0.9,
         mitre_refs=["T1110"], status=RecommendationStatus.PENDING,
-        created_at=NOW, reviewed_at=None, reviewed_by=None,
+        created_at=NOW, reviewed_at=None, reviewed_by=None, review_reason=None,
     )
     return Recommendation.model_validate({**defaults, **kwargs})
 
@@ -175,7 +175,12 @@ async def test_get_incident_not_found(client, mock_conn):
 
 async def test_review_approve(client, mock_conn):
     reco_pending = _make_reco()
-    reco_approved = _make_reco(status="approved", reviewed_by="analyste-soc")
+    reco_approved = _make_reco(
+        status="approved", reviewed_by="analyste-soc",
+        reviewed_at=NOW, review_reason="Action validée en réunion",
+    )
+
+    mock_conn.transaction = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(), __aexit__=AsyncMock(return_value=False)))
 
     with (
         patch("app.core.routes.recommendations.get_connection", AsyncMock(return_value=mock_conn)),
@@ -193,11 +198,14 @@ async def test_review_approve(client, mock_conn):
     data = r.json()
     assert data["status"] == "approved"
     assert data["reviewed_by"] == "analyste-soc"
+    assert data["review_reason"] == "Action validée en réunion"
 
 
 async def test_review_reject(client, mock_conn):
     reco_pending = _make_reco()
     reco_rejected = _make_reco(status="rejected", reviewed_by="analyste-soc")
+
+    mock_conn.transaction = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(), __aexit__=AsyncMock(return_value=False)))
 
     with (
         patch("app.core.routes.recommendations.get_connection", AsyncMock(return_value=mock_conn)),

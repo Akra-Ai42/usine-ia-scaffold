@@ -26,15 +26,18 @@ async def review_recommendation(reco_id: UUID, review: RecommendationReview) -> 
                 detail=f"Recommandation déjà traitée (statut: {reco.status})",
             )
 
-        updated = await incident_service.review_recommendation(conn, reco_id, review)
-        await incident_service.create_audit_entry(
-            conn,
-            entity_type="recommendation",
-            entity_id=reco_id,
-            action=review.status,
-            actor=review.reviewed_by,
-            reason=review.reason,
-        )
+        # Transaction atomique : review + audit_log en un seul commit.
+        # Si create_audit_entry échoue, review_recommendation est rollback.
+        async with conn.transaction():
+            updated = await incident_service.review_recommendation(conn, reco_id, review)
+            await incident_service.create_audit_entry(
+                conn,
+                entity_type="recommendation",
+                entity_id=reco_id,
+                action=review.status,
+                actor=review.reviewed_by,
+                reason=review.reason,
+            )
     finally:
         await conn.close()
 

@@ -25,6 +25,7 @@ class Recommendation(RecommendationCreate):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     reviewed_at: datetime | None = None
     reviewed_by: str | None = None
+    review_reason: str | None = None
 
     model_config = {"from_attributes": True}
 

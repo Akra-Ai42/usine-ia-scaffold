@@ -164,17 +164,17 @@ async def get_recommendation(
 async def review_recommendation(
     conn: psycopg.AsyncConnection, reco_id: UUID, review: RecommendationReview
 ) -> Recommendation | None:
+    # Pas de commit ici — géré par la transaction appelante (route review)
     rows = await conn.execute(
         """
         UPDATE recommendations
-        SET status = %s, reviewed_by = %s, reviewed_at = NOW()
+        SET status = %s, reviewed_by = %s, reviewed_at = NOW(), review_reason = %s
         WHERE id = %s AND status = 'pending'
         RETURNING *
         """,
-        (review.status, review.reviewed_by, str(reco_id)),
+        (review.status, review.reviewed_by, review.reason, str(reco_id)),
     )
     r = await rows.fetchone()
-    await conn.commit()
     return Recommendation.model_validate(dict(r)) if r else None
 
 
@@ -188,6 +188,7 @@ async def create_audit_entry(
     actor: str,
     reason: str | None = None,
 ) -> None:
+    # Pas de commit ici — géré par la transaction appelante (route review)
     await conn.execute(
         """
         INSERT INTO audit_log (entity_type, entity_id, action, actor, reason)
@@ -195,4 +196,3 @@ async def create_audit_entry(
         """,
         (entity_type, str(entity_id), action, actor, reason),
     )
-    await conn.commit()
