@@ -1,162 +1,204 @@
-# CLAUDE.md — Vigie (via usine-ia-scaffold)
+# CLAUDE.md — Vigie v2 (chatbot RAG SOC, version simple niveau senior)
 
-Ce fichier donne à Claude Code les règles pour construire **Vigie** en semi-autonomie. Lis-le en premier. **Avance sans me demander à chaque étape.**
+Remplace l'ancien CLAUDE.md. La version précédente était overengineered. On repart propre.
 
----
-
-## 🎯 Contexte en 3 lignes
-
-- **Vigie** = sujet pédagogique MSc2 Unit 3, La Plateforme_ x Devoteam Cyber Trust.
-- Format : hackathon incident response 2 semaines, agent LangGraph pour SOC AtlasMétaux.
-- Les étudiants reçoivent un repo `vigie-prod` fonctionnel, diagnostiquent et corrigent **3 incidents injectés**, sans tout reconstruire.
+Principe : senior = simple ET robuste, pas compliqué.
 
 ---
 
-## 🔒 Stack verrouillée — NON négociable
+## Contexte en 3 lignes
+
+- Vigie = chatbot RAG SOC, support pédagogique MSc2 La Plateforme_ x Devoteam.
+- Les étudiants reçoivent un repo fonctionnel, diagnostiquent et corrigent 3 incidents injectés.
+- Format : app web FastAPI déployable Render en 1 clic, comme Tempo Client V2.
+
+---
+
+## Stack cible — SIMPLE
 
 ```
 Python 3.11 + uv
-LangGraph                     (orchestration agent)
-OpenRouter                    (LLM gateway)
-Qdrant + rank_bm25 + cross-encoder  (retrieval hybride)
-MITRE ATT&CK                  (framework référence)
-FastAPI + Streamlit           (API + UI)
-PostgreSQL + Redis            (persistence + cache)
-Langfuse self-hosted          (observability LLM)
-Docker                        (packaging)
-Mailtrap.io                   (emails étudiants fictifs)
+FastAPI                     API + serve static HTML
+ChromaDB embedded           vecteurs MITRE, fichier local, pas de service
+OpenRouter                  LLM via httpx direct, PAS de LangChain
+sqlite3 stdlib              historique incidents + audit log
+HTML + CSS + JS vanilla     PAS de Streamlit, PAS de React
+mitre_techniques.json       source MITRE versionnée, pas de seed
+1 Dockerfile simple         PAS de docker-compose
 ```
 
-**Aucune nouvelle dépendance sans validation explicite.** Pas de FastAPI → Flask, pas de Qdrant → Chroma, pas de LangGraph → LlamaIndex. Si tu as un doute, choisis la lib principale de la stack et avance.
+### INTERDITS
+- Postgres, Redis, Qdrant service séparé, Langfuse self-hosted
+- LangChain, LangGraph, Streamlit
+- docker-compose multi-services
+- migrations SQL complexes
+- toute dépendance externe non indispensable
 
 ---
 
-## 🧨 Les 3 incidents à injecter (approche B stricte)
+## Architecture (pattern hexagonal simplifié)
 
-**Rappel approche B** : code source 100% sain pendant le dev. Points d'injection documentés dans un **playbook privé non versionné** (`.gitignore`). Les étudiants reçoivent le repo SAIN d'abord ; les injections sont appliquées par le formateur juste avant le hackathon.
+```
+app/
+├── main.py                 FastAPI + routes + serve static/
+├── core/
+│   ├── services/
+│   │   ├── chat.py         orchestration retrieval + LLM + persist
+│   │   └── guardrail.py    review humain des recommandations
+│   └── schemas.py          Pydantic models
+├── adapters/
+│   ├── llm.py              OpenRouter via httpx
+│   ├── retrieval.py        ChromaDB wrapper
+│   └── db.py               sqlite3 wrapper
+└── static/
+    ├── index.html          UI chatbot
+    ├── style.css
+    └── app.js
 
-| # | Incident | Deadline fictive | Pattern |
+data/
+├── mitre_techniques.json   source MITRE ATT&CK versionnée
+└── vigie.db                sqlite (gitignored)
+
+Dockerfile
+pyproject.toml
+```
+
+Pas plus. Pas de 15 dossiers.
+
+---
+
+## Esthétique UI — rétro Windows 95 + terminal CRT
+
+L'identité visuelle est verrouillée. Elle n'est pas négociable, c'est la signature du produit.
+
+### Nom
+- Nom affiché partout : "Vigie" seul. Pas de sous-titre, pas de slogan, pas de "— AtlasMétaux" ni autre.
+- Pas d'émojis nulle part dans l'UI. Les icônes utilisées sont Tabler Icons (webfont) et des caractères ASCII du type `>`, `▊`, `|`, `─`.
+
+### Chrome de la fenêtre (style Windows 95)
+- Fond général gris Windows 95 `#c3c3c3` sur le chrome (barre titre, menu, toolbar, status bar).
+- Barre de titre bleue avec dégradé `linear-gradient(90deg, #000080 0%, #1084d0 100%)`, texte blanc.
+- Boutons de titre (minimiser, maximiser, fermer) en relief 3D classique Win95 avec bordures asymétriques : `border-top: 1px solid #fff; border-left: 1px solid #fff; border-right: 1px solid #808080; border-bottom: 1px solid #808080;`.
+- Menu bar avec entrées accentuées type `<u>F</u>ichier`, `<u>I</u>ncidents`, `<u>A</u>gent`, `M<u>I</u>TRE`, `A<u>i</u>de`.
+- Toolbar avec boutons 3D Win95 et icônes Tabler à gauche de chaque label (16-18px, pas d'émojis).
+- Status bar en bas avec séparateurs `|` et pastille verte pour l'état API en ligne.
+- Coins carrés partout, pas de border-radius.
+- Fontes du chrome : `'Tahoma', 'MS Sans Serif', sans-serif`.
+
+### Zone centrale du chat (style terminal CRT)
+- Fond noir pur `#000000`.
+- Texte en vert phosphore `#00ff41` pour l'action, `#00aa2e` pour les prompts et séparateurs, `#c3e8c3` pour le texte explicatif, `#008f22` pour les détails faibles.
+- Scan lines CRT subtiles (effet moniteur ancien) via un overlay en `repeating-linear-gradient` à opacité très faible (0.03).
+- Fonte monospace pour le contenu : `'Courier New', 'Consolas', monospace`.
+- Prompts style terminal : `[ANALYSTE] >` et `[VIGIE] >`.
+- Curseur `▊` qui clignote via animation CSS `blink` 1s infinite.
+- Message agent dans un bloc avec `border-left: 2px solid #00ff41` et un fond vert très transparent.
+- Severity high en jaune `#ffff44`, rouge `#ff6b6b` pour les erreurs, les deux rares et uniquement en marqueur sémantique.
+- Entêtes de section préfixées par `▸` ou `─────` ASCII, jamais d'emojis ni d'icônes graphiques.
+
+### Guardrail humain AI Act art.14
+- Bloc dédié avec `border-left: 2px solid #ffff44` et fond jaune très transparent.
+- Message : "GUARDRAIL AI Act art.14 — Validation humaine requise".
+- 3 boutons type terminal avec raccourcis clavier dans le label : `[A]pprouver`, `[R]ejeter`, `[D]étails`.
+- Boutons avec fond très sombre (vert, rouge, neutre), bordure 1px dans la couleur sémantique, texte dans la même couleur, pas d'ombres ni d'effets.
+
+### Input utilisateur en bas
+- Fond noir, bordure fine verte phosphore.
+- Préfixe `>` monospace vert.
+- Placeholder : "Décrivez l'incident...".
+- Bouton d'envoi en texte terminal : "SEND" (pas "Send", pas "Envoyer").
+
+### Touches modernes autorisées
+- Animations douces (curseur qui clignote, fade in sur les nouveaux messages).
+- Icônes Tabler modernes dans la toolbar (ti-plus, ti-list, ti-shield-check, ti-shield-lock).
+- Hairlines colorées sémantiques (border-left) pour les blocs importants.
+- Responsive via CSS flex/grid (ça marche sur mobile mais garde l'esthétique).
+- Scrollbar personnalisée verte phosphore (fine, pas de flèches old-school).
+
+### Interdits esthétiques
+- Pas d'emojis nulle part dans l'UI.
+- Pas de gradients multi-couleurs sauf la barre de titre bleue Win95.
+- Pas d'ombres portées (box-shadow) sauf focus accessibility.
+- Pas de rounded corners (sauf scrollbar fine).
+- Pas de couleurs flashy en dehors des 4 sémantiques : vert phosphore (défaut), jaune (warning), rouge (erreur), bleu Win95 (chrome uniquement).
+- Pas de "mode clair" dans un premier temps : l'identité CRT verte est le mode par défaut et unique pour la zone de chat.
+
+Le résultat doit faire ressentir une "ambiance SOC des années 90 modernisée", pas une page web générique. Un étudiant doit reconnaître Vigie à l'esthétique en 1 seconde.
+
+---
+
+## Les 3 incidents à injecter (approche B stricte)
+
+Code source 100% sain pendant le dev. Points d'injection documentés dans `docs/incidents-playbook.md` (gitignored).
+
+| # | Incident | Fichier cible | Pattern |
 |---|---|---|---|
-| 1 | Dérive sémantique des recommandations | 72h | retrieval qui dévie lentement, SHAP qui ment |
-| 2 | Facture OpenRouter qui s'emballe | Vendredi S+1 | boucle de retry mal cadrée, pas de rate limit |
-| 3 | Bypass AI Act article 14 (47 actions auto non supervisées) | 10 jours ouvrés | guardrail humain contourné, logs incomplets |
-
-Design détaillé des 3 incidents : voir `docs/incidents-playbook.md` (gitignored).
+| 1 | Dérive sémantique du retrieval | `adapters/retrieval.py` | top_k bidouillé, filtre buggé |
+| 2 | Facture OpenRouter qui s'emballe | `adapters/llm.py` | retry mal cadré, pas de rate limit |
+| 3 | Bypass guardrail AI Act art.14 | `core/services/guardrail.py` | audit non transactionnel, check contournable |
 
 ---
 
-## ✅ RÈGLES DE DÉLÉGATION — ZICO
+## RÈGLES DE DÉLÉGATION
 
-### 🟢 Avance SEUL sur
+### Avance SEUL
+- Scaffolding, boilerplate, structure
+- Tests unitaires, mocks
+- Docstrings, README de modules
+- Nommage, formatters (ruff, black configs par défaut)
+- Dockerfile simple
+- HTML/CSS/JS vanilla
 
-- **Scaffolding, boilerplate, structure de dossiers** (suis les patterns de l'usine-ia-scaffold)
-- **Tests unitaires, fixtures, mocks**
-- **Docstrings, commentaires, README de modules**
-- **Refactoring interne** qui ne change pas le contrat API ou le schéma DB
-- **Choix de nommage** (variables, fonctions, fichiers) — reste cohérent avec la stack Python/snake_case
-- **Formatters et linters** (ruff, black, mypy configs par défaut)
-- **Dockerfile et docker-compose** standards pour la stack verrouillée
-- **Dependency pinning** dans `pyproject.toml` (versions mineures)
-- **Logs structurés** (format JSON, niveau INFO par défaut)
-- **Gestion d'erreurs standard** (try/except typés, pas de bare except)
+### Demande validation
+- Changement de contrat API (nouvelle route)
+- Ajout d'une dépendance externe
+- Design précis des 3 incidents
+- Toute modification de l'esthétique UI décrite ci-dessus
 
-### 🟡 Demande validation sur
-
-- **Changement de contrat API** (nouvelle route, breaking change de payload)
-- **Changement de schéma DB** (nouvelle table, migration destructive)
-- **Ajout d'une dépendance externe** (nouvelle lib, service tiers)
-- **Choix d'un design pattern structurant** (nouveau layer, nouveau concept d'archi)
-- **Design des 3 incidents** (comment précisément l'injecter sans que ce soit trop évident OU trop subtil)
-- **Fin de chaque brique** (checkpoint obligatoire)
-
-### 🔴 N'AVANCE JAMAIS SANS Zico
-
-- Reformuler la **pédagogie** (ce que les étudiants doivent apprendre)
-- Changer l'une des **8 décisions verrouillées 27/10**
-- Modifier la **grille jury**
-- Toucher aux **comptes réels** (OpenRouter, Mailtrap, GitHub)
-- Faire un `git push` sur le repo public `vigie-prod`
+### NE FAIS JAMAIS
+- Rajouter Postgres, Qdrant, Redis, Langfuse self-hosted, LangChain, Streamlit
+- Rajouter docker-compose multi-services
+- Push sur `vigie-prod` sans validation
+- Ajouter des émojis dans l'UI
+- Modifier l'identité "Vigie" seule (pas de sous-titre, pas d'ajout)
 
 ---
 
-## 📋 Format de rapport — fin de brique
+## Rapport de brique
 
-**Pas de blabla. 3 bullets max.**
+3 bullets max, pas de blabla.
 
 ```markdown
-### Brique X — [NOM]  (statut: ✅ terminée / ⚠️ bloquée)
-
-1. **Fait** : [en 1 phrase]
-2. **Décidé seul** : [points d'autonomie à titre d'info]
-3. **Bloquant** : [rien, ou 1 question précise]
+### Brique X — [NOM]  (statut: terminée / bloquée)
+1. Fait : [1 phrase]
+2. Décidé seul : [points autonomes]
+3. Bloquant : [rien ou 1 question]
 ```
 
-**Exemple** :
-```markdown
-### Brique 3 — Retrieval hybride Qdrant + BM25  (statut: ✅)
+---
 
-1. **Fait** : wiring Qdrant + rank_bm25 + cross-encoder, tests passants, latence p95 < 400ms sur 1000 docs seed.
-2. **Décidé seul** : chunk size 512 tokens avec overlap 50, embedding model `bge-m3` via OpenRouter.
-3. **Bloquant** : rien.
-```
+## Principe de fond
 
-**Si bloqué** : stoppe, rapporte, attends. Ne devine pas.
+Le code senior tient en peu de lignes et marche du premier coup.
+
+- Brique > 150 lignes → découper
+- Besoin d'une migration DB complexe → repenser le modèle
+- Dépendance externe pas indispensable → la supprimer
+- Test compliqué à écrire → le code est mal conçu
+
+But final : un étudiant ouvre le repo, lit le README, lance `uvicorn app.main:app`, et ça marche.
 
 ---
 
-## ⏱️ Rythme de travail — semaine 2 (4-10 nov)
+## Pièges à éviter
 
-**Objectif** : Vigie v1 fonctionnelle en fin de semaine, prête pour injection d'incidents en semaine 3.
-
-### Sprint
-
-Avance par **jour entier**, pas tâche par tâche. En fin de journée, 1 rapport consolidé des briques finies.
-
-| Jour | Objectif |
-|------|---------|
-| Lun 4 | Scaffold Vigie dans l'usine, DB schema, modèles Pydantic |
-| Mar 5 | Retrieval Qdrant + BM25 + cross-encoder, seed data MITRE |
-| Mer 6 | Agent LangGraph v1 (nodes principaux : triage, enrichissement, recommandation) |
-| Jeu 7 | FastAPI endpoints + Streamlit UI minimale |
-| Ven 8 | Langfuse hooks, Dockerfile, docker-compose e2e |
-| Sam-Dim | Tampon + tests end-to-end + README étudiants |
-
-**Checkpoint Zico** : dimanche 10 nov, 1 rapport global de la semaine (pas plus).
+- Pas d'overengineering. Vigie est un support pédagogique, pas une plateforme SaaS.
+- Pas d'abstractions prématurées.
+- Pas de "TODO" dans le code livré. Soit tu fais, soit tu notes dans `BACKLOG.md`.
+- Pas de secrets en dur. `os.environ` + `.env.example`.
+- Pas de dépendance à un service externe non mocké en test.
 
 ---
 
-## 🚫 Pièges à éviter
-
-- **Pas d'overengineering**. Vigie est un support pédagogique, pas une plateforme SaaS. 10 lignes qui marchent battent 100 lignes "scalables".
-- **Pas d'abstractions prématurées**. Si tu écris une interface pour 1 seul implémenteur, tu as écrit du code mort.
-- **Pas de "TODO" dans le code livré**. Soit tu fais, soit tu l'ajoutes à `BACKLOG.md`.
-- **Pas de secrets en dur**. Toujours via `os.environ` et `.env.example` versionné sans valeurs.
-- **Pas de dépendance à un service externe non mocké en test**. OpenRouter, Qdrant, Postgres doivent avoir leur fake pour les tests unitaires.
-
----
-
-## 🧭 Principe de fond : le brique-par-brique
-
-Tu travailles comme Zico : **une brique = une décision tranchée + un livrable testable + un carnet de bord mis à jour**.
-
-Chaque brique :
-1. Décision claire (quoi, pourquoi, alternatives écartées)
-2. Implémentation minimale qui passe les tests
-3. 1 entrée dans `CARNET_DE_BORD.md` à la racine du repo
-
-Si tu n'arrives pas à décrire une brique en 3 lignes, c'est qu'elle est trop grosse. **Découpe.**
-
----
-
-## 📞 Si vraiment bloqué
-
-- Erreur de stack ambiguë → essaie la solution la plus idiomatique de la lib, documente le choix.
-- Décision architecturale non-triviale → STOP, rapport, attends.
-- Comportement bizarre d'une lib → log, continue avec un workaround, note le TODO dans `BACKLOG.md`.
-
-**Ne jamais** demander une validation triviale. Si tu te poses la question "est-ce que Zico voudrait X ou Y ?" et que X et Y sont équivalents fonctionnellement, choisis X et avance.
-
----
-
-**Dernière mise à jour** : 2 novembre 2026
-**Prochain checkpoint** : dimanche 10 novembre 2026
+Dernière mise à jour : 3 novembre 2026
+Objectif immédiat : repo fonctionnel en 1 commande, déployable Render, esthétique Vigie rétro CRT verrouillée.

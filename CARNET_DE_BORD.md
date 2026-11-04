@@ -1,106 +1,85 @@
-# Carnet de bord — Vigie
+# CARNET DE BORD — Vigie v2
 
-## Brique 1 — Scaffold + DB schema + Pydantic schemas  (2026-11-04)
+## 2026-11-03/04 — Pivot majeur : refonte complète (v1 → v2)
 
-**Décision** : arborescence hexagonale centre + adapters, PostgreSQL 5 tables, Pydantic v2 strict.
+### Contexte du pivot
+L'ancienne v1 (LangGraph, Postgres, Qdrant service, Redis, Langfuse, Streamlit, docker-compose) était overengineered pour un support pédagogique MSc2. Pivot validé par l'utilisateur.
 
-**Livrable** :
-- Structure `app/` complète (config, logger, core/schemas, adapters/db, adapters/cache, adapters/llm)
-- Schéma SQL `001_initial.sql` avec 5 tables : alerts, incidents, agent_runs, recommendations, audit_log
-- Schemas Pydantic v2 pour toutes les entités + tests unitaires passants
-- `pyproject.toml` avec toutes les dépendances pinées
+---
 
-**Alternatives écartées** :
-- SQLAlchemy ORM → écarté (SQL brut suffisant, moins de magie pour les étudiants)
-- Alembic → écarté (script de migration custom plus lisible pour le cours)
+### Brique 1 — Archive v1  ✅
+- Tout l'ancien code archivé dans `_archive_v1/` (app, data, docs, scripts, tests, streamlit_app.py, docker-compose, Makefile...)
+- `.env`, `.venv`, `.git`, `CLAUDE.md` conservés
 
-## Brique 2 — Retrieval hybride Qdrant + BM25 + cross-encoder  (2026-11-05)
+### Brique 2 — Scaffold  ✅
+- Structure `app/core/services`, `app/adapters`, `app/static`, `data`, `docs`
+- `pyproject.toml` minimal : fastapi, uvicorn, httpx, chromadb, pydantic, python-dotenv
+- `.gitignore` mis à jour
 
-**Décision** : pipeline Dense → Sparse → RRF Fusion → Cross-encoder reranking. Embedding : `BAAI/bge-small-en-v1.5` (384 dims, rapide). Cross-encoder : `cross-encoder/ms-marco-MiniLM-L-6-v2`.
+### Brique 3 — data/mitre_techniques.json  ✅
+- 10 techniques MITRE ATT&CK versionnées : T1110, T1078, T1486, T1059, T1562, T1055, T1190, T1041, T1003, T1021
+- Chaque technique inclut : description, detection, mitigations, severity, subtechniques, platforms
 
-**Livrable** :
-- `app/adapters/retrieval/` : 6 modules (models, qdrant_store, bm25_store, cross_encoder, hybrid, mitre)
-- `scripts/seed_mitre.py` : fetch MITRE CTI → parse 200+ techniques → Qdrant + BM25
-- BM25 persisté via pickle dans `data/bm25_index.pkl`
-- Tests unitaires avec mocks (pas de Qdrant réel)
+### Brique 4 — adapters/llm.py  ✅
+- OpenRouter via httpx direct, timeout configurable (`LLM_TIMEOUT_S`)
+- Pas de retry (sain — incident 2 sera l'injection retry infini)
+- System prompt SOC en français
 
-**Alternatives écartées** :
-- Weighted score fusion → écarté (RRF plus robuste, pas de calibration manuelle)
-- Sub-techniques MITRE → écarté du seed initial (trop granulaire, ajouter en Brique 5+)
+### Brique 5 — adapters/retrieval.py  ✅
+- ChromaDB PersistentClient embedded (fichier local `data/chroma/`)
+- Seed automatique au premier appel depuis `mitre_techniques.json`
+- Lazy init singleton
 
-## Brique 3 — Agent LangGraph v1  (2026-11-03)
+### Brique 6 — adapters/db.py  ✅
+- sqlite3 avec context manager transactionnel (rollback automatique)
+- Tables : `incidents` + `audit_log`
+- `review_incident` atomique (UPDATE + INSERT en une transaction)
 
-**Décision** : graphe linéaire START → triage → enrichissement → recommandation → END. LLM appelé lazily dans chaque node (pas d'eager init). État TypedDict plat pour compatibilité LangGraph.
+### Brique 7 — core/services/chat.py  ✅
+- Orchestration : retrieval → LLM → persist
+- `requires_review = True` si technique high ou critical
+- `schemas.py` Pydantic v2 créé en même temps
 
-**Livrable** :
-- `app/agent/state.py` : `AgentState` TypedDict
-- `app/agent/nodes/triage.py` : node triage avec structured output Pydantic (`TriageLLMOutput`)
-- `app/agent/nodes/enrichissement.py` : node retrieval hybride (skip si erreur upstream)
-- `app/agent/nodes/recommandation.py` : node recommandations avec structured output (skip si erreur)
-- `app/agent/graph.py` : `build_graph(retriever)` + `run_agent()` entry point
-- `tests/unit/test_agent.py` : 8 tests unitaires passants (18/18 suite complète)
+### Brique 8 — core/services/guardrail.py  ✅
+- Validation action (`approved`/`rejected`)
+- Idempotence : incident déjà traité → erreur 400
+- Délègue la transaction atomique à `db.review_incident`
 
-**Alternatives écartées** :
-- Eager init LLM dans la factory → écarté (impossible à mocker sans vrai OpenRouter)
-- Mocker au niveau chain `__or__` → écarté (trop fragile), mock au niveau node factory
-- Branches conditionnelles dans le graphe → écarté (guard inline dans chaque node, plus lisible)
+### Brique 9 — app/main.py  ✅
+- 4 routes : POST /api/chat, POST /api/incidents/{id}/review, GET /api/incidents, GET /api/health
+- Serve static + lifespan init DB
 
-## Brique 4 — FastAPI endpoints + Streamlit UI minimale  (2026-11-03)
+### Brique 10 — UI Win95 + CRT  ✅ (validée utilisateur)
+- Chrome Windows 95 : barre titre bleue dégradée, boutons 3D asymétriques, fonte Tahoma
+- Zone chat terminal CRT : fond noir `#000000`, texte vert phosphore `#00ff41`, scan lines subtiles
+- Prompts `[ANALYSTE] >` et `[VIGIE] >`, curseur `▊` clignotant
+- Guardrail block : `border-left: 2px solid #ffff44`, boutons `[A]pprouver [R]ejeter [D]étails`
+- Icônes Tabler webfont (ti-plus, ti-list, ti-shield-check, ti-shield-lock), 0 émojis
+- Sidebar incidents intégrée
 
-**Décision** : agent lancé en BackgroundTask (202 Accepted) pour ne pas bloquer l'ingestion. Guardrail AI Act art.14 : toutes les recommandations naissent `pending`, chaque review insère dans `audit_log`. Retriever initialisé au lifespan avec fallback gracieux si Qdrant/BM25 absent.
+### Brique 11 — Dockerfile + render.yaml + README  ✅
+- Dockerfile 1 service, build simple, pas de docker-compose
+- `render.yaml` Web Service Python, 1-clic Render
+- README "Démarrage en 30 secondes"
+- `docs/incidents-playbook.md` (gitignored) : 3 injections documentées
 
-**Livrable** :
-- `app/core/services/incident_service.py` : CRUD SQL brut (incidents, alerts, agent_runs, recommendations, audit_log)
-- `app/core/services/agent_service.py` : orchestration run_agent → DB
-- `app/core/routes/alerts.py` : `POST /api/alerts` → 202 + background agent
-- `app/core/routes/incidents.py` : `GET /api/incidents` + `GET /api/incidents/{id}`
-- `app/core/routes/recommendations.py` : `POST /api/recommendations/{id}/review`
-- `app/main.py` mis à jour : lifespan retriever + include_router
-- `streamlit_app.py` : dashboard incidents + détail + approve/reject
+---
 
-**Alternatives écartées** :
-- Attendre l'agent de façon synchrone → écarté (latence LLM inacceptable sur POST /alerts)
-- ORM SQLAlchemy → écarté (SQL brut plus lisible pour les étudiants, schema simple)
+## État au 2026-11-04
 
-## Brique 5 — Langfuse hooks + Dockerfile + docker-compose e2e  (2026-11-03)
+| # | Brique | Statut |
+|---|--------|--------|
+| 1 | Archive v1 | Validée |
+| 2 | Scaffold | Validée |
+| 3 | MITRE JSON | Validée |
+| 4 | LLM adapter | Validée |
+| 5 | Retrieval ChromaDB | Validée |
+| 6 | DB sqlite | Validée |
+| 7 | Service chat | Validée |
+| 8 | Guardrail | Validée |
+| 9 | main.py routes | Validée |
+| 10 | UI Win95 + CRT | Validée |
+| 11 | Dockerfile + deploy | Validée |
 
-**Décision** : Langfuse câblé comme LangChain CallbackHandler dans `run_agent()`, gracieux si clés absentes. Même image Docker pour API et UI (CMD overridé en compose). Service `migrate` en `profile: init` pour ne pas tourner à chaque `up`.
-
-**Livrable** :
-- `app/adapters/observability/langfuse_hooks.py` : singleton client + callback builder + flush
-- `app/agent/graph.py` mis à jour : `RunnableConfig(callbacks=[langfuse_cb])` si clés présentes
-- `app/main.py` mis à jour : `flush_langfuse()` au shutdown
-- `Dockerfile` : python:3.11-slim + uv, couche deps cacheable
-- `docker-compose.yml` : db, redis, qdrant, langfuse-db, langfuse, api, ui, migrate (profile init)
-- `runtime.txt`, `Procfile` pour Render
-- `pyproject.toml` : fix psycopg `>=3.2.10` (3.2.3 n'existe pas)
-
-**Alternatives écartées** :
-- Langfuse SDK décorators `@observe` → écarté (callback LangChain plus transparent pour les étudiants)
-- Image séparée pour Streamlit → écarté (même image, CMD overridé, moins de maintenance)
-- Service migrate auto au startup → écarté (profile init, évite migration accidentelle)
-
-## Brique 6 — Tests e2e + README étudiants  (2026-11-03)
-
-**Décision** : tests e2e via httpx AsyncClient + ASGITransport (pas de vraie DB), mocks au niveau service. README orienté opérateur SOC, pas développeur : commandes directement utilisables, tableau fichiers clés, exigences AI Act expliquées.
-
-**Livrable** :
-- `tests/e2e/test_api.py` : 13 tests e2e (health, POST alert, GET incidents, GET detail, review ×4)
-- `README.md` réécrit : setup, utilisation curl, fichiers clés, observabilité, troubleshooting
-- Suite complète : **31/31 tests passants**
-
-**Alternatives écartées** :
-- Tests e2e avec vraie DB (postgres en CI) → écarté pour ce sprint (complexité setup, Docker non dispo en test)
-- README développeur → écarté (les étudiants sont des opérateurs SOC, pas des contributeurs du repo)
-
-## Brique 7 — Playbook incidents  (2026-11-03)
-
-**Décision** : approche B stricte — code source 100% sain, injections documentées dans `docs/incidents-playbook.md` (gitignored). 3 incidents conçus pour être découvrables via Langfuse + logs + DB, ni trop évidents ni trop subtils.
-
-**Livrable** : `docs/incidents-playbook.md` (gitignored, formateur uniquement)
-
-| # | Incident | Fichier injecté | Mécanisme |
-|---|----------|----------------|-----------|
-| 1 | Dérive sémantique | `hybrid.py` | rank ignoré dans RRF fusion sparse → BM25 domine |
-| 2 | Facture OpenRouter | `openrouter.py` + `agent_service.py` | timeout=1.5s + retry loop ×25 sans backoff |
-| 3 | Bypass AI Act art.14 | `agent_service.py` | auto-approve si confiance ≥ 0.75, audit_log non écrit |
+**Commande de démarrage :** `uvicorn app.main:app --port 8000`  
+**Prochaine étape possible :** tester avec une vraie `OPENROUTER_API_KEY` + préparer session d'injection incidents.

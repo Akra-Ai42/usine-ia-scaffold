@@ -16,16 +16,13 @@ htmlcov/
 .env.local
 
 # Data
-data/*.db
+data/vigie.db
+data/chroma/
 data/*.csv
 data/raw/
-models/
 
 # Docs privés (approche B)
 docs/incidents-playbook.md
-
-# Docker
-.docker/
 
 # IDE
 .vscode/

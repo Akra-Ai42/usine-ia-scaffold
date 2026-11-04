@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: vigie
+    runtime: python
+    buildCommand: pip install fastapi "uvicorn[standard]" httpx chromadb pydantic python-dotenv
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: anthropic/claude-3-haiku
+      - key: LLM_MAX_TOKENS
+        value: "1024"
+      - key: LLM_TIMEOUT_S
+        value: "30"

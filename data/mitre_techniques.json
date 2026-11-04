@@ -1,0 +1,112 @@
+[
+  {
+    "id": "T1110",
+    "name": "Brute Force",
+    "tactic": "Credential Access",
+    "description": "Adversaries may use brute force techniques to gain access to accounts when passwords are unknown or when password hashes are obtained. Subtechniques include password guessing, password spraying, credential stuffing, and password cracking.",
+    "detection": "Monitor authentication logs for high volume of failed authentication attempts. Alert on accounts with more than 5 failed logins in 60 seconds. Correlate with source IP reputation and geolocation anomalies.",
+    "mitigations": ["M1036 Account Use Policies", "M1032 Multi-factor Authentication", "M1027 Password Policies"],
+    "subtechniques": ["T1110.001 Password Guessing", "T1110.002 Password Cracking", "T1110.003 Password Spraying", "T1110.004 Credential Stuffing"],
+    "platforms": ["Windows", "Linux", "macOS", "Azure AD", "Office 365", "SaaS"],
+    "severity": "high"
+  },
+  {
+    "id": "T1078",
+    "name": "Valid Accounts",
+    "tactic": "Defense Evasion / Persistence / Privilege Escalation / Initial Access",
+    "description": "Adversaries may obtain and abuse credentials of existing accounts as a means of gaining initial access, persistence, privilege escalation, or defense evasion. Compromised credentials may be used to bypass access controls placed on various resources on systems within the network.",
+    "detection": "Monitor for unusual login times, source IPs, or access patterns for existing accounts. Correlate with HR data to detect access after employee offboarding. Alert on use of service accounts for interactive logins.",
+    "mitigations": ["M1036 Account Use Policies", "M1032 Multi-factor Authentication", "M1026 Privileged Account Management", "M1017 User Training"],
+    "subtechniques": ["T1078.001 Default Accounts", "T1078.002 Domain Accounts", "T1078.003 Local Accounts", "T1078.004 Cloud Accounts"],
+    "platforms": ["Windows", "Linux", "macOS", "AWS", "GCP", "Azure", "SaaS"],
+    "severity": "high"
+  },
+  {
+    "id": "T1486",
+    "name": "Data Encrypted for Impact",
+    "tactic": "Impact",
+    "description": "Adversaries may encrypt data on target systems or on large numbers of systems in a network to interrupt availability to system and network resources. Ransomware is the most common form. Encryption can be performed asymmetrically or symmetrically.",
+    "detection": "Monitor for large-scale file rename events (e.g., extensions changing to .locked, .enc, .crypted). Alert on abnormal file I/O rates. Monitor for deletion of shadow copies (vssadmin delete shadows). Detect known ransomware process signatures.",
+    "mitigations": ["M1053 Data Backup", "M1040 Behavior Prevention on Endpoint", "M1049 Antivirus/Antimalware"],
+    "subtechniques": [],
+    "platforms": ["Windows", "Linux", "macOS", "IaaS"],
+    "severity": "critical"
+  },
+  {
+    "id": "T1059",
+    "name": "Command and Scripting Interpreter",
+    "tactic": "Execution",
+    "description": "Adversaries may abuse command and script interpreters to execute commands, scripts, or binaries. Interfaces and languages include cmd, PowerShell, bash, Python, JavaScript, and many others. Adversaries often use these to blend malicious activity with legitimate system administration.",
+    "detection": "Enable command-line logging (PowerShell Script Block Logging, bash history). Monitor for suspicious parent-child process relationships (e.g., Office spawning cmd.exe). Alert on obfuscated command strings, encoded payloads, and known LOLBas usage.",
+    "mitigations": ["M1042 Disable or Remove Feature or Program", "M1038 Execution Prevention", "M1026 Privileged Account Management", "M1021 Restrict Web-Based Content"],
+    "subtechniques": ["T1059.001 PowerShell", "T1059.003 Windows Command Shell", "T1059.004 Unix Shell", "T1059.006 Python", "T1059.007 JavaScript"],
+    "platforms": ["Windows", "Linux", "macOS"],
+    "severity": "high"
+  },
+  {
+    "id": "T1562",
+    "name": "Impair Defenses",
+    "tactic": "Defense Evasion",
+    "description": "Adversaries may maliciously modify components of a victim environment in order to hinder or disable defensive mechanisms. This includes disabling security tools, clearing logs, modifying firewall rules, or tampering with endpoint detection and response (EDR) agents.",
+    "detection": "Monitor for unexpected disabling of security services (Windows Defender, auditd, Sysmon). Alert on firewall rule modifications. Detect clearing of Windows Event Logs. Monitor for tampering with EDR agent processes.",
+    "mitigations": ["M1038 Execution Prevention", "M1022 Restrict File and Directory Permissions", "M1024 Restrict Registry Permissions", "M1018 User Account Management"],
+    "subtechniques": ["T1562.001 Disable or Modify Tools", "T1562.002 Disable Windows Event Logging", "T1562.003 HISTCONTROL", "T1562.004 Disable or Modify System Firewall", "T1562.006 Indicator Blocking"],
+    "platforms": ["Windows", "Linux", "macOS", "IaaS", "Containers"],
+    "severity": "high"
+  },
+  {
+    "id": "T1055",
+    "name": "Process Injection",
+    "tactic": "Defense Evasion / Privilege Escalation",
+    "description": "Adversaries may inject code into processes in order to evade process-based defenses as well as possibly elevate privileges. Process injection is a method of executing arbitrary code in the address space of a separate live process. Common techniques include DLL injection, process hollowing, and thread hijacking.",
+    "detection": "Monitor for unusual process access events, especially from processes writing to executable regions of other processes. Alert on suspicious CreateRemoteThread, WriteProcessMemory, NtUnmapViewOfSection API calls. Detect anomalous parent-child process trees.",
+    "mitigations": ["M1040 Behavior Prevention on Endpoint", "M1026 Privileged Account Management"],
+    "subtechniques": ["T1055.001 Dynamic-link Library Injection", "T1055.002 Portable Executable Injection", "T1055.012 Process Hollowing"],
+    "platforms": ["Windows", "Linux", "macOS"],
+    "severity": "high"
+  },
+  {
+    "id": "T1190",
+    "name": "Exploit Public-Facing Application",
+    "tactic": "Initial Access",
+    "description": "Adversaries may attempt to take advantage of a weakness in an Internet-facing computer or program using software, data, or commands in order to cause unintended or unanticipated behavior. Targets include web applications, databases, standard services (SSH, RDP, SMB), and industrial control systems.",
+    "detection": "Monitor web application logs for unusual error rates, SQL injection patterns, or path traversal attempts. Alert on WAF rule hits. Correlate CVE exploit signatures with IDS/IPS alerts. Monitor for unexpected process spawning from web server processes.",
+    "mitigations": ["M1048 Application Isolation and Sandboxing", "M1030 Network Segmentation", "M1016 Vulnerability Scanning", "M1051 Update Software"],
+    "subtechniques": [],
+    "platforms": ["Windows", "Linux", "macOS", "Network"],
+    "severity": "critical"
+  },
+  {
+    "id": "T1041",
+    "name": "Exfiltration Over C2 Channel",
+    "tactic": "Exfiltration",
+    "description": "Adversaries may steal data by exfiltrating it over an existing command and control channel. Stolen data is encoded into the normal communications channel using the same protocol as command and control communications.",
+    "detection": "Monitor for abnormally large outbound network transfers, especially over unusual ports or protocols. Alert on DNS query volume anomalies. Detect data encoding/compression before transmission. Correlate with DLP alerts on sensitive file access.",
+    "mitigations": ["M1057 Data Loss Prevention", "M1037 Filter Network Traffic", "M1031 Network Intrusion Prevention"],
+    "subtechniques": [],
+    "platforms": ["Windows", "Linux", "macOS"],
+    "severity": "high"
+  },
+  {
+    "id": "T1003",
+    "name": "OS Credential Dumping",
+    "tactic": "Credential Access",
+    "description": "Adversaries may attempt to dump credentials to obtain account login and credential material, normally in the form of a hash or a clear text password. Credentials can then be used to perform Lateral Movement and access restricted information. Mimikatz is a common tool used for credential dumping.",
+    "detection": "Monitor for access to LSASS memory (sekurlsa, mimikatz signatures). Alert on tools like procdump or comsvcs.dll being used against LSASS. Detect NTDS.dit access or shadow copy creation. Monitor for SAM database access attempts.",
+    "mitigations": ["M1043 Credential Access Protection", "M1025 Privileged Process Integrity", "M1026 Privileged Account Management", "M1017 User Training"],
+    "subtechniques": ["T1003.001 LSASS Memory", "T1003.002 Security Account Manager", "T1003.003 NTDS"],
+    "platforms": ["Windows", "Linux", "macOS"],
+    "severity": "critical"
+  },
+  {
+    "id": "T1021",
+    "name": "Remote Services",
+    "tactic": "Lateral Movement",
+    "description": "Adversaries may use valid accounts to log into a service specifically designed to accept remote connections, such as telnet, SSH, RDP, and VNC. The adversary may then perform actions as the logged-on user. Legitimate remote desktop tools are often abused for lateral movement.",
+    "detection": "Monitor for unusual RDP or SSH connections, especially to systems not normally accessed remotely by the source account. Alert on RDP connections from non-IT workstations to servers. Detect off-hours remote access and geographic anomalies.",
+    "mitigations": ["M1032 Multi-factor Authentication", "M1035 Limit Access to Resource Over Network", "M1030 Network Segmentation", "M1026 Privileged Account Management"],
+    "subtechniques": ["T1021.001 Remote Desktop Protocol", "T1021.002 SMB/Windows Admin Shares", "T1021.004 SSH"],
+    "platforms": ["Windows", "Linux", "macOS"],
+    "severity": "medium"
+  }
+]

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vigie</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div id="window">
+
+  <!-- Title bar -->
+  <div id="titlebar">
+    <div id="titlebar-left">
+      <i class="ti ti-shield-lock" style="font-size:14px;"></i>
+      Vigie
+    </div>
+    <div id="titlebar-buttons">
+      <button class="tb-btn" title="Réduire">_</button>
+      <button class="tb-btn" title="Agrandir">&#9633;</button>
+      <button class="tb-btn" title="Fermer">&#10005;</button>
+    </div>
+  </div>
+
+  <!-- Menu bar -->
+  <div id="menubar">
+    <div class="menu-item"><u>F</u>ichier</div>
+    <div class="menu-item"><u>I</u>ncidents</div>
+    <div class="menu-item"><u>A</u>gent</div>
+    <div class="menu-item">M<u>I</u>TRE</div>
+    <div class="menu-item">A<u>i</u>de</div>
+  </div>
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <button class="tool-btn" id="btn-new">
+      <i class="ti ti-plus"></i> Nouveau
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-incidents">
+      <i class="ti ti-list"></i> Incidents
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" id="btn-mitre" onclick="void 0">
+      <i class="ti ti-shield-check"></i> MITRE ATT&CK
+    </button>
+    <button class="tool-btn" id="btn-guardrail" onclick="void 0">
+      <i class="ti ti-shield-lock"></i> Guardrail AI Act
+    </button>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- Sidebar incidents -->
+    <div id="sidebar">
+      <div id="sidebar-header">&#9658; INCIDENTS</div>
+      <div id="incident-list">
+        <div style="padding:6px;color:#666;font-size:11px;">Chargement...</div>
+      </div>
+    </div>
+
+    <!-- CRT terminal zone -->
+    <div id="chat-zone">
+      <div id="messages"></div>
+
+      <!-- Loading indicator -->
+      <div id="loading" style="padding:0 16px 4px;position:relative;z-index:1;">
+        <span style="color:var(--crt-green-dim);font-family:var(--font-mono);font-size:13px;">[VIGIE] &gt; Analyse en cours<span class="cursor">▊</span></span>
+      </div>
+
+      <!-- Input bar -->
+      <div id="input-bar">
+        <span id="input-prefix">&gt;</span>
+        <input
+          id="user-input"
+          type="text"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Décrivez l'incident..."
+          aria-label="Saisie incident"
+        >
+        <button id="send-btn">SEND</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Status bar -->
+  <div id="statusbar">
+    <span id="api-dot"></span>
+    <span id="status-text">Connexion...</span>
+    <span class="status-sep">|</span>
+    <span>MITRE ATT&CK v15</span>
+    <span class="status-sep">|</span>
+    <span>Guardrail AI Act art.14</span>
+    <span class="status-sep">|</span>
+    <span>Vigie v2.0</span>
+  </div>
+
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

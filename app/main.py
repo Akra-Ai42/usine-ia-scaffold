@@ -1,59 +1,63 @@
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from app.adapters.observability.langfuse_hooks import flush_langfuse
-from app.config import settings
-from app.core.routes.alerts import router as alerts_router
-from app.core.routes.incidents import router as incidents_router
-from app.core.routes.recommendations import router as recommendations_router
-from app.logger import configure_logging, logger
+from app.adapters import db
+from app.core.schemas import ChatRequest, ChatResponse, ReviewRequest, ReviewResponse
+from app.core.services import chat, guardrail
 
+load_dotenv()
 
-def _build_retriever():
-    """Construit HybridRetriever si Qdrant et BM25 index sont disponibles."""
-    try:
-        from app.adapters.retrieval.bm25_store import BM25Store, _INDEX_PATH
-        from app.adapters.retrieval.cross_encoder import CrossEncoderReranker
-        from app.adapters.retrieval.hybrid import HybridRetriever
-        from app.adapters.retrieval.qdrant_store import QdrantStore
-
-        if not Path(_INDEX_PATH).exists():
-            logger.warning("retriever_skipped_no_bm25_index", path=str(_INDEX_PATH))
-            return None
-
-        qdrant = QdrantStore()
-        bm25 = BM25Store.load()
-        cross_encoder = CrossEncoderReranker()
-        logger.info("retriever_initialized")
-        return HybridRetriever(qdrant=qdrant, bm25=bm25, cross_encoder=cross_encoder)
-    except Exception as exc:
-        logger.warning("retriever_init_failed", error=str(exc))
-        return None
+_STATIC = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    configure_logging(settings.log_level)
-    logger.info("vigie_starting", env=settings.app_env)
-    app.state.retriever = _build_retriever()
+    db.init_db()
     yield
-    flush_langfuse()
-    logger.info("vigie_shutdown")
 
 
-app = FastAPI(title="Vigie SOC", version="0.1.0", lifespan=lifespan)
-
-app.include_router(alerts_router)
-app.include_router(incidents_router)
-app.include_router(recommendations_router)
+app = FastAPI(title="Vigie SOC", version="2.0.0", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory=str(_STATIC)), name="static")
 
 
-@app.get("/health")
-async def health() -> dict:
-    return {
-        "status": "ok",
-        "version": "0.1.0",
-        "retriever": "ready" if app.state.retriever else "unavailable",
-    }
+@app.get("/", include_in_schema=False)
+async def index():
+    return FileResponse(_STATIC / "index.html")
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def api_chat(req: ChatRequest):
+    if not req.message.strip():
+        raise HTTPException(400, "Message vide")
+    try:
+        return await chat.analyze(req.message)
+    except RuntimeError as e:
+        raise HTTPException(503, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Erreur interne : {e}")
+
+
+@app.post("/api/incidents/{incident_id}/review", response_model=ReviewResponse)
+async def api_review(incident_id: int, req: ReviewRequest):
+    try:
+        return guardrail.review(incident_id, req)
+    except LookupError as e:
+        raise HTTPException(404, str(e))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/incidents")
+async def api_list_incidents():
+    return JSONResponse(db.list_incidents())
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok", "service": "vigie"}

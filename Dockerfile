@@ -2,22 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Dépendances système minimales (sentence-transformers a besoin de gcc)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
-# uv pour install rapide
-RUN pip install --no-cache-dir uv
-
-# Dépendances Python — couche cacheable
 COPY pyproject.toml .
-RUN uv pip install --system .
+RUN pip install --no-cache-dir ".[all]" 2>/dev/null || pip install --no-cache-dir \
+    "fastapi>=0.115" \
+    "uvicorn[standard]>=0.30" \
+    "httpx>=0.27" \
+    "chromadb>=0.5" \
+    "pydantic>=2.9" \
+    "python-dotenv>=1.0"
 
-# Code source
-COPY . .
+COPY app/ app/
+COPY data/mitre_techniques.json data/mitre_techniques.json
 
-# Par défaut : API FastAPI
-# Overrider dans docker-compose pour Streamlit
+EXPOSE 8000
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
